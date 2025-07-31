@@ -107,7 +107,7 @@ sequenceDiagram
 
 
 ## Implementation Outline
-
+<!-- 
 1. **Setup & Dependencies**
     ```bash
     python3 -m venv .venv
@@ -129,7 +129,7 @@ sequenceDiagram
     from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
     from llama_index import VectorStoreIndex, StorageContext
 
-    embed_model = GoogleGenAIEmbedding(model_name="text-embedding-005", api_key=os.getenv("GOOGLE_API_KEY"))
+    embed_model = GoogleGenAIEmbedding(model_name="text-embedding-001", api_key=os.getenv("GOOGLE_API_KEY"))
     storage_ctx = StorageContext.from_defaults(persist_dir="./.index_storage")
     index = VectorStoreIndex.from_documents(chunks, embed_model=embed_model, storage_context=storage_ctx)
     storage_ctx.persist()
@@ -172,4 +172,4 @@ sequenceDiagram
           POSTGRES_PASSWORD: rag
         volumes:
           - ./postgres-data:/var/lib/postgresql/data
-    ```
+    ``` -->

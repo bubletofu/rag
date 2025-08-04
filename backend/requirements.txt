@@ -1,5 +1,12 @@
 fastapi
-uvicorn[standard]
-llama-index
-openai
+uvicorn
+langchain
+langchain-community
+langchain-google-genai
+langchain-openai
+chromadb
 python-dotenv
+PyPDF2
+pytest
+pypdf
+python-multipart

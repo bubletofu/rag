@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./backend/src/services/rag_",
+        "./backend/src/services/rag_"
+    ]
+}

@@ -1,12 +1,12 @@
 # RAG Pipeline: Full Implementation Guide
 
-This document outlines a complete Retrieval-Augmented Generation (RAG) pipeline using Python, LlamaIndex, FastAPI, PostgreSQL+pgvector or ChromaDB, and Google GenAI (Gemini) for embeddings and LLM generation.
+This document outlines a complete Retrieval-Augmented Generation (RAG) pipeline using Python, **LangChain**, FastAPI, PostgreSQL+pgvector or ChromaDB, and Google GenAI (Gemini) for embeddings and LLM generation.
 
 ## Tech Stack & Tools
 - **Python 3.9+**
-- **LlamaIndex** for data ingestion, chunking, and query engines
-- **Google GenAI Embeddings** (`GoogleGenAIEmbedding`) for vectorization
-- **Google GenAI LLM** (`GoogleGenAI`) for answer generation
+- **LangChain** for data ingestion, chunking, retrieval, and query chains
+- **Google GenAI Embeddings** (`GoogleGenerativeAIEmbeddings`) for vectorization
+- **Google GenAI LLM** (`ChatGoogleGenerativeAI`) for answer generation
 - **FastAPI** for building the backend API
 - **Uvicorn** as the ASGI server
 - **ChromaDB** or **PostgreSQL + pgvector** for vector storage
@@ -18,12 +18,12 @@ This document outlines a complete Retrieval-Augmented Generation (RAG) pipeline 
 ```mermaid
 flowchart LR
   subgraph Ingestion
-    A["Raw Docs (PDF, HTML, Crawled)"] --> B["Text Reader (LlamaIndex Readers)"]
+    A["Raw Docs (PDF, HTML, Crawled)"] --> B["Text Loader (LangChain Loaders)"]
     B --> C["Chunker (RecursiveCharacterTextSplitter)"]
   end
 
   subgraph Embedding
-    C --> D["GoogleGenAIEmbedding Task"]
+    C --> D["GoogleGenerativeAIEmbedding Task"]
     D -->|enqueue| CW1["Celery Worker: Embedding"]
   end
 
@@ -32,8 +32,8 @@ flowchart LR
   end
 
   subgraph Backend
-    E --> F["Retrieval Engine (index.as_query_engine())"]
-    F --> G["LLM Generation Task"]
+    E --> F["Retriever (VectorStoreRetriever)"]
+    F --> G["LLM Generation Task (RetrievalQA Chain)"]
     G -->|enqueue| CW2["Celery Worker: LLM Generator"]
     CW2 --> H["FastAPI `/query` Endpoint"]
   end
@@ -54,7 +54,6 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-
     participant U as User
     participant FE as Frontend
     participant API as FastAPI Backend
@@ -105,41 +104,43 @@ sequenceDiagram
     end
 ```
 
-
 ## Implementation Outline
-<!-- 
+
 1. **Setup & Dependencies**
     ```bash
     python3 -m venv .venv
     source .venv/bin/activate
-    pip install fastapi uvicorn llama-index llama-index-embeddings-google-genai chromadb psycopg2-binary python-dotenv
+    pip install fastapi uvicorn langchain langchain-community langchain-google-genai chromadb psycopg2-binary python-dotenv
     ```
 
 2. **Data Ingestion & Chunking**
     ```python
-    from llama_index import SimpleDirectoryReader
+    from langchain_community.document_loaders import DirectoryLoader
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-    docs = SimpleDirectoryReader("database/texts").load_data()
-    chunks = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200).split_documents(docs)
+    loader = DirectoryLoader("database/texts", glob="**/*.txt")
+    docs = loader.load()
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    chunks = text_splitter.split_documents(docs)
     ```
 
 3. **Embedding & Indexing**
     ```python
-    from llama_index.embeddings.google_genai import GoogleGenAIEmbedding
-    from llama_index import VectorStoreIndex, StorageContext
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
+    from langchain_community.vectorstores import Chroma
+    import os
 
-    embed_model = GoogleGenAIEmbedding(model_name="text-embedding-001", api_key=os.getenv("GOOGLE_API_KEY"))
-    storage_ctx = StorageContext.from_defaults(persist_dir="./.index_storage")
-    index = VectorStoreIndex.from_documents(chunks, embed_model=embed_model, storage_context=storage_ctx)
-    storage_ctx.persist()
+    embed_model = GoogleGenerativeAIEmbeddings(model="text-embedding-001", google_api_key=os.getenv("GOOGLE_API_KEY"))
+    vectorstore = Chroma.from_documents(documents=chunks, embedding=embed_model, persist_directory="./.index_storage")
+    vectorstore.persist()
     ```
 
 4. **Backend API**
     ```python
     from fastapi import FastAPI
     from pydantic import BaseModel
-    from services.rag_service import answer_query
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain.chains import RetrievalQA
 
     app = FastAPI()
 
@@ -147,9 +148,15 @@ sequenceDiagram
         query: str
         top_k: int = 3
 
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=os.getenv("GOOGLE_API_KEY"))
+    vectorstore = Chroma(persist_directory="./.index_storage", embedding_function=GoogleGenerativeAIEmbeddings(model="text-embedding-001"))
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
+
     @app.post("/query")
     def query_endpoint(req: QueryRequest):
-        return {"answer": answer_query(req.query, req.top_k)}
+        result = qa_chain.run(req.query)
+        return {"answer": result}
     ```
 
 5. **Docker Compose**
@@ -172,4 +179,4 @@ sequenceDiagram
           POSTGRES_PASSWORD: rag
         volumes:
           - ./postgres-data:/var/lib/postgresql/data
-    ``` -->
+    ```

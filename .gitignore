@@ -1,4 +1,21 @@
 # ~/.gitignore
-.env
-.DS_Store
 *.log  
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.env
+.venv/
+*.sqlite3
+*.log
+
+# VSCode
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Docker
+*.pid
+.index_storage/

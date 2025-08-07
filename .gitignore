@@ -9,6 +9,7 @@ __pycache__/
 .venv/
 *.sqlite3
 *.log
+*.bin
 
 # VSCode
 .vscode/

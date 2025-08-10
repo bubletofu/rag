@@ -10,6 +10,7 @@ import os
 from dotenv import load_dotenv
 import shutil
 
+
 load_dotenv() #tét git
 
 app = FastAPI()
@@ -33,7 +34,7 @@ class QueryRequest(BaseModel):
 
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
-    result = qa_chain(req.query)
+    result = qa_chain.invoke({"query": req.query})
     return {
         "answer": result['result'],
         "sources": [

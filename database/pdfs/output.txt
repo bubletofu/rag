@@ -1,0 +1,784 @@
+J Comput Virol Hack Tech
+DOI 10.1007/s11416-015-0261-z
+ORIGINAL PAPER
+A comparison of static, dynamic, and hybrid analysis
+for malware detection
+Anusha Damodaran1·Fabio Di Troia2·Corrado Aaron Visaggio2·
+Thomas H. Austin1·Mark Stamp1
+Received: 9 September 2015 / Accepted: 8 December 2015
+© Springer-V erlag France 2015
+Abstract In this research, we compare malware detection
+techniques based on static, dynamic, and hybrid analysis.
+Speciﬁcally, we train Hidden Markov Models (HMMs) on
+both static and dynamic feature sets and compare the result-
+ing detection rates over a substantial number of malware
+families. We also consider hybrid cases, where dynamic
+analysis is used in the training phase, with static techniques
+used in the detection phase, and vice versa. In our experi-
+ments, a fully dynamic approach generally yields the best
+detection rates. We discuss the implications of this research
+for malware detection based on hybrid techniques.
+1 Introduction
+According to Symantec [ 44], more than 317 million new
+pieces of malware were created in 2014, which represents
+a 26 % increase over 2013. Given numbers such as these,
+malware detection is clearly a signiﬁcant and worthwhile
+research topic.
+In practice, the most widely used malware detection
+method is signature scanning, which relies on pattern match-
+ing. While signature scanning is effective for many types of
+malware, it is ineffective for detecting new malware, or even
+signiﬁcant variants of existing malware [ 5].
+A wide array of advanced detection techniques have been
+considered in the literature. Some detection techniques rely
+only on static analysis [ 3,4,6,11,15,16,26,38–40,42], that
+B Mark Stamp
+mark.stamp@sjsu.edu
+1Department of Computer Science, San Jose State University,
+San Jose, USA
+2Department of Engineering, Università degli Studi del
+Sannio, Benevento, Italyis, features that can be obtained without executing the soft-
+ware. In addition, dynamic analysis has been successfully
+applied to the malware detection problem [ 1,2,12,19,21,27,
+30–33,50]. Recently, hybrid approaches have been analyzed,
+where both static and dynamic features are used [ 10,20].
+Here, we compare static analysis with dynamic analysis,
+and also consider hybrid schemes that combine elements of
+both. We use a straightforward training and scoring technique
+based on Hidden Markov Models and we consider feature
+sets consisting of API call sequences and opcode sequences.
+In this research, our goal is to gain some level of under-
+standing of the relative advantages and disadvantages of
+static, dynamic, and hybrid techniques. In particular, we
+would like to determine whether there is any inherent advan-
+tage to a hybrid approach. Note that our goal here is not
+to optimize the detection accuracy, which would likely
+require combining a variety of scores and scoring techniques.
+Instead, we conduct our analysis in a relatively simple set-
+ting, by which we hope to reduce the number of potentially
+confounding variables that tend to appear in more highly
+optimized systems.
+The remainder of this paper is organized as follows.
+In Sect. 2, we discuss relevant background information,
+including related work. Section 3discusses the experiments
+conducted and the datasets used. In Sect. 4, we present
+our experimental results. The paper concludes with Sect. 5,
+where we also mention possible future work.
+2 Background
+In this section, we ﬁrst provide a brief discussion of malware
+detection techniques, with an emphasis on Hidden Markov
+Models, which are the basis for the research presented in
+this paper. We also review relevant related work. Finally, we
+123A. Damodaran et al.
+discuss ROC curves, which give us a convenient means to
+quantify the various experiments that we have conducted.
+2.1 Malware detection
+There are many approaches to the malware detection prob-
+lem. Here, we brieﬂy consider signature-based, behavior-based, and statistical-based detection, before turning our
+attention to a slightly more detailed discussion of HMMs.
+2.1.1 Signature based detection
+Signature based detection is the most widely used anti-virus
+technique [ 5]. A signature is a sequence of bytes that can
+be used to identify speciﬁc malware. A variety of patternmatching schemes are used to scan for signatures [ 5]. Signa-
+ture based anti-virus software must maintain a repository of
+signatures of known malware and such a repository must beupdated frequently as new threats are discovered.
+Signature based detection is simple, relatively fast, and
+effective against most common types malware. A drawback
+of signature detection is that it requires an up-to-date signa-ture database—malware not present in the database will not
+be detected. Also, relatively simple obfuscation techniques
+can be used to evade signature detection [ 7].
+2.1.2 Behavior based detection
+Behavior based detection focuses on the actions performed
+by the malware during execution. In behavior based systems,the behavior of the malware and benign ﬁles are analyzed
+during a training (learning) phase. Then during a testing
+(monitoring) phase, an executable is classiﬁed as either mal-ware or benign, based on patterns derived in the training
+phase [ 25].
+2.1.3 Statistical based detection
+Malware detection can be based on statistical properties
+derived from program features. For example, in [ 49], Hidden
+Markov Models (HMMs) are used to classify metamorphicmalware. This technique has served a benchmark in a variety
+of other studies [ 6,35,39,45]. Consequently, we use HMMs
+as the basis for the malware detection schemes considered inthis research.
+2.2 Hidden Markov models
+A Hidden Markov Model can be viewed as a machine
+learning technique, based on a discrete hill climb [ 43]. Appli-
+cations of HMMs are many and varied, ranging from speech
+recognition to applications in computational molecular biol-ogy, to artiﬁcial intelligence, to malware detection [ 23].As the name suggests, a Hidden Markov Model includes
+a Markov process that cannot be directly observed. In anHMM, we have a series of observations that are related to
+the “hidden” Markov process by a set of discrete probability
+distributions.
+We use the following notation for an HMM [ 43]:
+T=length of the observation sequence
+N=number of states in the model
+M=number of observation symbols
+Q={ q
+0,q1,..., qN−1}= distinct states of the Markov
+process
+V={0,1,..., M−1}= set of possible observations
+A=state transition probabilities
+B=observation probability matrix
+π=initial state distribution
+O=(O0,O1,..., OT−1)=observation sequence .
+A generic Hidden Markov Model is illustrated in Fig. 1.
+A Hidden Markov Model is deﬁned by the matrices π,A
+and B, and hence we denote an HMM as λ=(A,B,π).F o r
+simplicity, we often refer to λsimply as a “model”.
+The practical utility of HMMs derives from the fact that
+there are efﬁcient algorithms to solve each of the followingthree problems [ 43].
+Problem 1 Given a model λ=(A,B,π) and an obser-
+vation sequence O, determine P(O|λ). That is, we
+can score a given observation sequence against a given
+model—the better the score, the more closely the obser-vation sequence matches the observations used to trainthe model.
+Problem 2 Given a model λ=(A,B,π) and an observa-
+tion sequence O, determine the optimal state sequence X.
+That is, we can uncover the “best” hidden state sequence.
+Here, “best” is in the sense of maximizing the expected
+number of correct states X
+i. This is in contrast to a
+dynamic program, which yields the Xicorresponding to
+the highest scoring path.
+Problem 3 Given an observation sequence Oand para-
+meters Nand M, determine the model λ=(A,B,π)
+such that P(O|λ)is maximized. That is, we can train a
+model to ﬁt a given observation sequence O.
+In this research, we use the solution to Problem 3 to train a
+model based on observation sequences extracted from a givenmalware family. Then we use the solution to Problem 1 to
+score observation sequences extracted from malware ﬁles as
+well as sequences extracted from benign ﬁles. We use theresulting scores to measure the success of each technique.
+123A comparison of static, dynamic, and hybrid ...
+Fig. 1 Generic Hidden Markov
+Model
+Details on the HMM algorithms are beyond the scope of
+this paper. For a thorough discussion of the solutions to HMMProblems 1 through 3, see [ 43]; for additional information
+see [ 23] or the classic introduction [ 34]. For the application
+of HMMs to malware detection, see, for example, [ 49].
+2.3 Related work
+Here we discuss some relevant examples of previous work.
+We group the previous work based on whether it relies on sta-
+tic analysis or dynamic analysis, and we discuss techniques
+that employ a hybrid approach.
+2.3.1 Static analysis
+Static analysis of software is performed without actually exe-
+cuting the program [ 18]. Examples of the information we
+can obtain from static analysis include opcode sequences
+(extracted by disassembling the binary ﬁle), control ﬂowgraphs, and so on. Such feature sets can be used individu-ally or in combination for malware detection.
+In [11], the authors presented a malware detection tech-
+nique that relies on static analysis and is based on controlﬂow graphs. Their approach focuses on detecting obfusca-
+tion patterns in malware and they are able to achieve good
+accuracy.
+Machine learning techniques have been applied to mal-
+ware detection in the context of static detection. In [ 49],
+Hidden Markov Models are used to effectively classify meta-morphic malware, based on extracted opcode sequences. Asimilar analysis involving Proﬁle Hidden Markov Models
+is considered in [ 4], while Principal Component Analysis
+is used in [ 26] and [ 16], and Support V ector Machines are
+used for malware detection in [ 40]. The paper [ 3]e m p l o y s
+clustering, based on features derived from static analysis, for
+malware classiﬁcation.
+In [15], function call graph analysis is used for malware
+detection, while [ 39] analyzes an opcode-based similarity
+measure that relies on simple substitution cryptanalysis tech-niques. API call sequences and opcode sequences are bothused in [ 38] to determine whether a segment of code has
+similarity to some particular malware.
+The papers [ 6,28] analyze ﬁle structure based on entropy
+variations. The work in these paper was inspired by the
+entropy-based score in [ 42].
+2.3.2 Dynamic analysis
+Dynamic analysis requires that we execute the program,
+often in a virtual environment [ 18]. Examples of informa-
+tion that can be obtained by dynamic analysis include API
+calls, system calls, instruction traces, registry changes, mem-
+ory writes, and so on.
+In [27], the authors build ﬁne-grained models that are
+designed to capture the behavior of malware based on system
+calls. The resulting behavior models are represented in theform of graphs, where the vertices denote system calls and
+the edges denote dependency between the calls.
+The paper [ 1] presents a run-time monitoring tool that
+extracts statistical features based on spatio-temporal infor-mation in API call logs. The spatial information consists of
+the arguments and return values of the API calls, while the
+temporal information is the sequencing of the API calls. Thisinformation is used to build formal models that are fed into
+standard machine learning algorithms, for use in malware
+detection.
+In [19], a set of program API calls is extracted and com-
+bined with control ﬂow graphs to obtain a so-called API-CFG
+model. In a slightly modiﬁed version [ 21],n-gram methods
+are applied to the API calls.
+Some recent work focuses on kernel execution traces as
+a means of developing a malware behavior monitor [ 33].
+In [30], the authors present an effective method for malware
+classiﬁcation using graph algorithms, which relies on dynam-
+ically extracted information. The related work [ 31] constructs
+a “kernel object behavioral graph” and graph isomorphismtechniques are used for scoring.
+API sequences are again used for malware detection
+in [50]. In [ 32], malware is analyzed based on frequency
+analysis of API call sequences.
+123A. Damodaran et al.
+In [12], dynamic instruction sequences are logged and
+converted into abstract assembly blocks. Data mining algo-rithms are used to build a classiﬁcation model that relies on
+feature vectors extracted from this data.
+The authors of [ 2] propose a malware detection technique
+that uses instruction trace logs of executables, where thisinformation is collected dynamically. These traces are then
+analyzed as graphs, where the instructions are the nodes,
+and statistics from instruction traces are used to calculatetransition probabilities. Support V ector Machines are used to
+determine the actual classiﬁcation.
+2.3.3 Hybrid approaches
+Hybrid techniques combine aspects of both static and
+dynamic analysis. In this section, we discuss two recentexamples of work of this type.
+In [10], the authors propose a framework for classiﬁcation
+of malware using both static and dynamic analysis. Theydeﬁne features of malware using an approach that they call
+Malware DNA (Mal-DNA). The heart of this technique is a
+debugging-based behavior monitor and analyzer that extractsdynamic characteristics.
+In [20], the authors develop and analyze a tool that they
+call HDM Analyser. This tool uses both static analysis and
+dynamic analysis in the training phase, but performs only sta-tic analysis in the testing phase. The goal is to take advantage
+of the supposedly superior ﬁdelity of dynamic analysis in the
+training phase, while maintaining the efﬁciency advantageof static detection in the scoring phase. For comparison, it is
+shown that HDM Analyser has better overall accuracy and
+time complexity than the static or dynamic analysis methodsin [20]. The dynamic analysis in [ 20] is based on extracted
+API call sequences.
+Next, we discuss ROC analysis. We use the area under
+the ROC curve as one of our measures of success for theexperiments reported in Sect. 4.
+2.4 ROC analysis
+A receiver operating characteristic (ROC) curve is obtained
+by plotting the false positive rate against the true positiverate as the threshold varies through the range of data values.An Area Under the ROC curve (AUC-ROC) of 1.0 implies
+ideal detection, that is, there exists a threshold for which no
+false positives or false negatives occur. The AUC-ROC can beinterpreted as the probability that a randomly selected posi-
+tive instance scores higher than a randomly selected negative
+instance [ 8,22]. Therefore, an AUC-ROC of 0.5 means that
+the binary classiﬁer is no better than ﬂipping a coin. Also,
+an AUC-ROC that is less than 0.5 implies that we can obtain
+a classiﬁer with an AUC-ROC greater than 0.5 by simplyreversing the classiﬁcation criteria.An examples of a scatterplot and the corresponding ROC
+curve is given in Fig. 2. The red circles in the scatterplot rep-
+resent positive instances, while the blue squares represent
+negative instances. In the context of malware classiﬁcation,
+the red circles are scores for malware ﬁles, while the bluesquares represent scores for benign ﬁles. Furthermore, weassume that higher scores are “better”, that is, for this par-
+ticular score, positive instances are supposed to score higher
+than negative instances.
+For a given experiment, the true positive rate is also known
+as the sensitivity, while the true negative rate is referred
+to as the speciﬁcity. Then the false positive rate is givenby 1−speciﬁcity.
+Note that if we place the threshold below the lowest
+point in the scatterplot in Fig. 2, then sensitivity =1 and
+1−speciﬁcity =1
+On the other hand, if we place the threshold above the highest
+point, then sensitivity =0 and 1 −speciﬁcity =0
+Consequently, an ROC curve must always include thepoints (0,0)and(1,1). The intermediate points on the ROC
+curve are determined as the threshold passes through the
+range of values. For example, if we place the threshold
+at the yellow dashed line in the scatterplot in Fig. 2,t h e
+true positive rate (i.e., sensitivity) is 0.7, since 7 of the 10
+positive instances are classiﬁed correctly, while the falsepositive rate (i.e., 1 −speciﬁcity) is 0.2, since 2 of the 10
+negative cases lie on the wrong side of the threshold. This
+implies that the point (0.2,0.7)lies on the ROC curve.
+The point (0.2,0.7)is illustrated by the black circle on the
+ROC graph in Fig. 2. The shaded region in Fig. 2repre-
+sents the AUC. In this example, we ﬁnd that the AUC-ROC
+is 0.75.
+2.5 PR analysis
+Precision Recall (PR) curves offer an alternative to ROC
+analysis for scatterplot data [ 14]. There are many connections
+between PR curves and ROC curves,
+1but in certain cases,
+PR curves can be more informative. In particular, when thenomatch set is large relative to the match set, PR curves may
+be preferred.
+We deﬁne recall to be the fraction of the match cases that
+are classiﬁed correctly, and precision is the fraction of ele-
+ments classiﬁed as positive that actually belong to the match
+set. More precisely,
+recall =TP
+TP+FNand precision =TP
+TP+FP
+where TP is the number of true positives, FP is the number
+of false positives, and FN is the number of false neg-
+1For example, if one curve dominates another in ROC space, it also
+dominates in PR space, and vice versa.
+123A comparison of static, dynamic, and hybrid ...
+Fig. 2 Scatterplot and ROC
+curve
+Fig. 3 Scatterplot and PR curve
+atives. Note that recall is the true positive rate, which
+we referred to as sensitivity in our discussion of ROC
+curves. However, precision is not the same as the falsepositive rate which is used to compute ROC curves. Alsonote that TN does not appear in the formula for recall
+or precision, and hence true negatives play no (direct) role
+in computing the PR curve. Again, this may be useful ifwe want to focus our attention on the positive set, par-
+ticularly when we have a relatively large negative set. As
+with ROC analysis, we can use the Area Under the PRCurve (AUC-PR) as a measure of the success of a classi-
+ﬁer.
+To generate the PR curve, we plot the (recall,precision )
+pairs as the threshold varies through the range of values ina given scatterplot. To illustrate the process, we consider the
+same data as in the ROC curve example in Sect. 2.4.T h i s
+data and the corresponding PR curve is given here in Fig. 3.
+For the threshold that appears in the scatterplot in Fig. 3,
+we have TP =7, FP=2, and FN =3, and hence
+recall =7
+7+3=0.7 and precision =7
+7+2≈0.78
+This point is plotted on the right-hand side of Fig. 3and the
+entire PR curve is given. In this example, the AUC-PR isabout 0.69.3 Experiments
+In this section, we ﬁrst discuss the tools that we use to extractfeatures from code—both statically and dynamically. Thenwe give an overview of the malware dataset used in this
+project. Finally, we elaborate on the experiments conducted.
+In Sect. 4, we provide the results of our experiments.
+3.1 T ools for dynamic and static analysis
+IDA Pro is a disassembler that generates highly accurate
+assembly code from an executable. It can also be used asa debugger. IDA is a powerful tool that supports scripting,
+function tracing, instruction tracing, instruction logging, etc.
+In this research, we use IDA Pro for static analysis, specif-ically, to generate .asm ﬁles from .exe ﬁles, from which
+opcodes and windows API calls can be extracted. We also
+use IDA Pro for dynamic analysis, speciﬁcally, to collect
+instruction traces from executables.
+In addition to IDA Pro, for dynamic analysis we use the
+Buster Sandbox Analyzer (BSA). BSA is a dynamic analy-
+sis tool that has been designed to determine if a processexhibits potentially malicious behavior. In addition to ana-
+lyzing the behavior of a process, BSA keeps track of actions
+taken by a monitored program, such as registry changes, ﬁle-system changes, and port changes [ 9]. The tool runs inside
+123A. Damodaran et al.
+a sandbox which protects the system from infection while
+executing malware. The sandbox used by BSA is known asSandboxie [ 36].
+For dynamic analysis, we also experimented with
+Ether [ 17]. Ether is an open source tool that resides com-
+pletely outside of the target OS, which makes it difﬁcultfor a program to detect that emulation is occurring. This is
+potentially useful for malware analysis, since viruses can,
+in principle, detect a debugger or a virtual environment dur-ing execution. However, for the datasets considered in this
+paper, we found no signiﬁcant differences in the API call
+sequences generated by BSA and Ether. Since BSA is moreuser-friendly, in this research, we exclusively used BSA to
+generate our dynamic API call sequences.
+3.2 Datasets
+The following seven malware families were used as datasets
+in this research [ 29].
+Harebot is a backdoor that provides remote access to the
+infected system. Because of its many features, it is alsoconsidered to be a rootkit [ 24].
+Security Shield is a Trojan that, like Winwebsec, claims
+to be anti-virus software. Security Shield reports fakevirus detection messages and attempts to coerce the users
+into purchasing software [ 37].
+Smart HDD reports various problems with the hard drive
+and tries to convince the user to purchase a product to ﬁx
+these “errors”. Smart HDD is named after S.M.A.R.T.,
+which is a legitimate tool that monitors hard disk drives(HDDs) [ 41].
+Winwebsec pretends to be anti-virus software. An
+infected system displays fake messages claiming mali-
+cious activity and attempts to convince the user to paymoney for software to clean the supposedly infected sys-
+tem [ 48].
+Zbot also known as Zeus, is a Trojan horse that com-
+promises a system by downloading conﬁguration ﬁles
+or updates. Zbot is a stealth virus that hides in the ﬁle
+system [ 46]. The virus eventually vanishes from the
+processes list and, consequently, we could only trace itsexecution for about 5 to 10 minutes.
+ZeroAccess is a Trojan horse that makes use of an
+advanced rootkit to hide itself. ZeroAccess is capableof creating a new hidden ﬁle system, it can create a back-
+door on the compromised system, and it can download
+additional malware [ 47].
+Table 1gives the number of ﬁles used from each malware
+family and the benign dataset.
+For our benign dataset, we use the set of Windows System
+32 ﬁles listed in Table 2.Ta b l e 1 Datasets
+Family Number of Files
+Harebot 45
+Security Shield 50Smart HDD 50Winwebsec 200Zbot 200ZeroAccess 200benign 40
+Ta b l e 2 Benign Dataset
+notepad alg calc cipher
+cleanmgr cmd cmdl32 driverquerydrwtsn32 dvdplay eventcreate eventtriggerseventvwr narrator freecell grpconvmshearts mspaint netstat nslookuposk packager regedit sndrec32sndvol32 sol sort spidersyncapp ipconfig taskmgr telnetverifier winchat charmap clipbrdctfmon wscript mplay32 winhlp32
+3.3 Data collection
+For training and scoring, we use opcode sequences and API
+calls. For both opcode and API call sequences, we extract the
+data using both a static and a dynamic approach, giving us
+four observation sequences for each program under consid-eration. As noted in Sect. 2.3, opcode sequences and API call
+traces have been used in many research studies on malware
+detection.
+We use IDA Pro to disassemble ﬁles and we extract the
+static opcode sequences from the resulting disassembly. For
+example, suppose we disassemble an exe ﬁle and obtain the
+disassembly in Table 3.
+The static opcode sequence corresponding to this disas-
+sembly is
+call,push,lea,push,push,call,add,test,jz
+We discard all operands, labels, directives, etc., and only
+retain the mnemonic opcodes.
+For dynamic opcode sequences, we execute the program
+in IDA Pro using the “tracing” feature. From the resulting
+program trace, we extract mnemonic opcodes. Note that thestatic opcode sequence corresponds to the overall program
+structure, while the dynamic opcode sequence corresponds
+to the actual execution path taken when the program wastraced.
+123A comparison of static, dynamic, and hybrid ...
+Ta b l e 3 Example Disassembly
+.text:00401017 call sub 401098
+.text:0040101C push 8.text:0040101E lea ecx, [esp+24h+var
+14]
+.text:00401022 push offset xyz.text:00401027 push ecx.text:00401028 call sub
+401060
+.text:0040102D add esp, 18h.text:00401030 test eax, eax.text:00401032 jz short loc
+401045
+Microsoft Windows provides a variety of API (Applica-
+tion Programming Interface) calls that facilitate requests forservices from the operating system [ 1]. Each API call has a
+distinct name, a set of arguments, and a return value. We only
+collect API call names, discarding the arguments and returnvalue. An example of a sequence of API calls is given by
+OpenMutex ,CreateFile ,OpenProcessToken ,
+AdjustTokenPrivileges ,
+SetNamedSecurityInfo ,
+LoadLibrary ,CreateFile ,GetComputerName ,
+QueryProcessInformation ,VirtualAllocEx ,
+DeleteFile
+As with opcodes, API calls can be extracted from executa-
+bles statically or dynamically. Our static API call sequencesare obtained from IDA Pro disassembly. As mentioned inSect. 3.1, we use Buster Sandbox Analyser (BSA) to dynam-
+ically extract API calls. BSA allows us to execute a program
+for a ﬁxed amount of time, and it logs all API calls that occurwithin this execution window. From these logged API calls,
+we form a dynamic API call sequence for each executable.
+3.4 Training and scoring
+For our experiments, four cases are considered. In the ﬁrst,
+we use the static observation sequences for both trainingand scoring. In the second case, we use the dynamicallyextracted data for both training and scoring. The third and
+fourth cases are hybrid situations. Speciﬁcally, in the third
+case, we use the dynamic data for training, but the staticdata for scoring. In the fourth case, we use static training
+data, but dynamic data for scoring. We denote these four
+cases as static/static, dynamic/dynamic, static/dynamic, anddynamic/static, respectively.
+Our static/static and dynamic/dynamic cases can be
+viewed as representative of typical approaches used in staticand dynamic detection. The dynamic/static case is analogousto the approach used in many hybrid schemes. This approach
+seems to offer the prospect of the best of both worlds. That is,we can have a more accurate model due to the use dynamic
+training data, and yet scoring remains efﬁcient, thanks to the
+use of static scoring data. Since the training phase is essen-tially one-time work, it is acceptable to spend signiﬁcant timeand effort in training. And the scoring phase can be no better
+than the model generated in the training phase.
+On the other hand, the static/dynamic seems to offer no
+clear advantage. For completeness, we include this case in
+our opcode experiments.
+We conducted a separate experiment for each of the mal-
+ware datasets listed in Table 1, for each of the various
+combinations of static and dynamic data mentioned above.
+For every experiment, we use ﬁve-fold cross validation. Thatis, the malware dataset is partitioned into ﬁve equal subsets,say, S
+1,S2,S3,S4, and S5. Then subsets S1,S2,S3, and S4
+are used to train an HMM, and the resulting model is used to
+score the malware in S5, and to score the ﬁles in the benign set.
+The process is repeated ﬁve times, with a different subset Si
+reserved for testing in each of the ﬁve “folds”. Cross valida-
+tion serves to smooth out any bias in the partitioning of thedata, while also maximizing the number of scores obtained
+from the available data.
+The scores from a given experiment are used to form a
+scatterplot, from which an ROC curve is generated. The areaunder the ROC curve serving as our measure of success, as
+discussed in Sect. 2.4.
+4 Results
+In this section, we present our experimental results. We per-
+formed experiments with API call sequences and separate
+experiments using opcode sequences. All experiments were
+conducted as discussed in Sect. 3.4. That is, different com-
+binations of static and dynamic data were used for training
+and scoring. Also, each experiment is based on training and
+scoring with HMMs, using ﬁve-fold cross validation.
+As discussed in Sect. 2.4, the effectiveness of each experi-
+ment is quantiﬁed using the area under the ROC curve (AUC).
+In this section, we present AUC results, omitting the scat-terplots and ROC curves. For additional details and results,see [ 13].
+4.1 API call sequences
+We trained HMM models on API call sequences for each of
+the malware families in Table 1. The ROC results are given
+in Table 4, with these same results plotted in the form of a
+bar graph in Fig. 4.
+Overall, we see that using dynamic training and testing
+yields the best results, while static training and testing is as
+123A. Damodaran et al.
+Ta b l e 4 AUC-ROC Results for API Call Sequence
+Family Dynamic/
+dynamicStatic/
+staticDynamic/
+staticStatic/
+dynamic
+Harebot 0.9867 0.7832 0.5783 0.5674
+Security shield 0.9875 1.0000 0.9563 0.8725Smart HDD 0.9808 0.7900 0.7760 0.7325Winwebsec 0.9762 0.9967 0.7301 0.6428Zbot 0.9800 0.9899 0.9364 0.8879ZeroAccess 0.9968 0.9844 0.7007 0.9106
+Fig. 4 ROC results for API call sequence
+effective in all cases, except for Harebot and Smart HDD. Per-
+haps surprisingly, the hybrid approach of dynamic training
+with static scoring produces worse results than the fully sta-tic case for all families. In fact, the dynamic/static case fares
+signiﬁcantly worse than the static/static case for all families
+except Security Shield and Zbot.
+We also computed PR curves for each of the malware
+families in Table 1. The AUC-PR results are given in Table 5,
+with these same results plotted in the form of a bar graph in
+Fig. 5.
+Next, we provide results for analogous experiments using
+opcode sequences. Then we discuss the signiﬁcance of these
+results with respect to static, dynamic, and hybrid detectionstrategies.
+4.2 Opcode sequences
+In this set of experiments, we use opcode sequences for train-
+ing and scoring. As in the API sequence case, we considerTa b l e 5 AUC-PR Results for API Call Sequence
+Family Dynamic/
+dynamicStatic/
+staticDynamic/
+staticStatic/
+dynamic
+Harebot 0.9858 0.8702 0.7111 0.4888
+Security shield 0.9884 1.0000 0.9534 0.3312Smart HDD 0.9825 0.8799 0.3768 0.4025Winwebsec 0.9800 0.9967 0.7359 0.3947Zbot 0.9808 0.9931 0.9513 0.3260ZeroAccess 0.9980 0.9879 0.4190 0.3472
+Fig. 5 PR results for API call sequence
+combinations of static and dynamic data for training and scor-
+ing. Also as above, we train HMMs and use the resulting
+models for scoring.
+Before presenting our results, we note that the opcode
+sequences obtained in the static and dynamic cases differ
+signiﬁcantly. In Fig. 6we give a bar graph showing the counts
+for the number of distinct opcodes in the static and dynamiccases. From Fig. 6, we see that scoring in the dynamic/static
+case will be complicated by the fact that, in general, many
+opcodes will appear when scoring that were not part of thetraining set. While there are several ways to deal with sucha situation, when scoring, we simply omit any opcodes that
+did not appear in the training set.
+Our results for training and scoring on opcode sequences
+are given in Table 6. The results in Table 6are given in the
+form of a bar graph in Fig. 7.
+These opcode-based results are generally not as strong
+as those obtained for API call sequences. But, as with
+API call sequences, the best results are obtained in the
+dynamic/dynamic case. However, unlike the API call sequ-ence models, opcode sequences yield results that are roughly
+123A comparison of static, dynamic, and hybrid ...
+Fig. 6 Distinct opcodes
+Ta b l e 6 AUC-ROC Results for Opcode Sequences
+Family Dynamic/
+dynamicStatic/
+staticDynamic/
+staticStatic/
+dynamic
+Harebot 0.7210 0.5300 0.5694 0.5832
+Security Shield 0.9452 0.5028 0.6212 0.5928Smart HDD 0.9860 0.9952 1.0000 0.9748Winwebsec 0.8268 0.6609 0.7004 0.6279Zbot 0.9681 0.7755 0.6424 0.9525ZeroAccess 0.9840 0.7760 0.8970 0.6890
+equivalent in the static/static and the hybrid dynamic/static
+case. Additional experimental results can be found in [ 13].
+4.3 Imbalance problem
+In statistical-based scoring, we typically have a primary test
+that is used to ﬁlter suspect cases, followed by a secondary
+test that is applied to these suspect cases. For malware detec-tion, the primary test is likely to have an imbalance, in the
+sense that the number of benign samples exceeds the number
+of malware samples—possibly by a large margin. In the sec-ondary stage, we would expect the imbalance to be far less
+signiﬁcant. Due to their cost, malware detection techniques
+such as those considered in this paper would most likelybe applied at the secondary stage. Nevertheless, it may beinstructive to consider the effect of a large imbalance between
+the benign and malware sets. In this section, we consider the
+effect of such an imbalance on our dynamic, static, and hybridtechniques.
+We can simulate an imbalance by simply duplicating each
+benign score ntimes. Assuming that the original number of
+scored benign and malware samples are equal, a duplication
+factor of nsimulates an imbalanced data set where the benign
+samples outnumber the malware samples by a factor of n.
+Provided that our original benign set is representative, weFig. 7 ROC results for opcode sequences
+would expect an actual benign set of the appropriate size
+to yield scores that, on average, match this simulated (i.e.,expanded) benign set.
+However, the AUC-ROC for such an expanded benign set
+will be the same as for the original set. To see why this is
+so, suppose that for a given threshold, we have TP =a,
+FN=b,F P=c, and TN =d. Then (x,y)is a point on the
+ROC curve, where
+x=FPR=FP
+FP+TN=c
+c+dand
+y=TPR=TP
+TP+FN=a
+a+b(1)
+Now suppose that we upsample by duplicating each element
+of the negative (i.e., benign) set ntimes. Then for the same
+threshold used to compute ( 1), we have TP =a,F N=b,
+FP=nc, and TN =nd, and hence we obtain the same
+point(x,y)on the ROC curve for this modiﬁed dataset.
+In contrast, for PR curves, using the same threshold as
+above we have
+recall =TP
+TP+FN=a
+a+band
+precision =TP
+TP+FP=a
+a+c
+When we expand our dataset by duplicating the benign
+scores ntimes, this threshold yields
+recall =a
+a+band precision =a
+a+nc
+123A. Damodaran et al.
+(a) (b)
+(c) ( d)
+Fig. 8 AUC-PR and imbalanced data (API calls)
+Consequently, we see that simulating an imbalance in this
+way will tend to ﬂatten the PR curve, and thereby reducethe AUC-PR. In addition, the precise degree of ﬂattening
+will depend on the relative distribution of the malware and
+benign scores.
+We have shown that the AUC-ROC provides no informa-
+tion on the effect of an imbalance between the malware and
+benign sets. In some sense, this can be viewed as a strength of
+the AUC-ROC statistic, although it does render it useless foranalyzing the effect of imbalanced data. On the other hand,
+the AUC-PR is a useful statistic for comparing the effect
+of an imbalance between these two sets. Consequently, weuse the AUC-PR in this section to determine the effect of
+a (simulated) imbalance between the malware and benign
+sets. We consider the API sequence results, and we duplicateeach benign score by a factor of n=1,n=10, n=100,
+and n=1000, and plot the results on a logarithmic (base
+10) scale. The resulting AUC-PR values for each of the fourcases (i.e., dynamic/dynamic, static/static, dynamic/static,
+and static/dynamic) are plotted as line graphs in Fig. 8.
+The results in Fig. 8suggest that we can expect the supe-
+riority of the a fully dynamic approach, to increase as the
+imbalance between the benign and malware sets grows. Inaddition, the advantage of the fully static approach over ourhybrid approaches increases as the imbalance increases. We
+also see that even in those cases where the dynamic/static
+approach is initially competitive, it fails to remain so for alarge imbalance. And ﬁnally, the overall weakness of the sta-
+tic/dynamic approach is even more apparent from this PR
+analysis.
+4.4 Discussion
+The results in this section show that for API calls and opcode
+sequences, a fully dynamic strategy is generally the mosteffective approach. However, dynamic analysis is generally
+123A comparison of static, dynamic, and hybrid ...
+costly in comparison to static analysis. At the training phase,
+this added cost is not a signiﬁcant issue, since training isessentially one-time work that can be done ofﬂine. But, at the
+scoring phase, dynamic analysis would likely be impractical,
+particularly where it is necessary to scan a large number ofﬁles.
+In a hybrid approach, we might attempt to improve the
+training phase by using dynamic analysis while, for the sake
+of efﬁciency, using only a static approach in the scoringphase. However, such a strategy was not particularly suc-
+cessful in the experiments considered here. For API call
+sequences, we consistently obtained worse results with thehybrid dynamic/static as compared to a fully static approach.
+For opcode sequences, the results were inconsistent—in four
+of the cases, the hybrid dynamic/static method was mar-ginally better than the fully static approach, but for one caseit was signiﬁcantly worse.
+Attempting to optimize a malware detection technique by
+using hybrid analysis is intuitively appealing. While sucha hybrid approach may be more effective in certain cases,
+our results show that this is not likely to be generically the
+case. Consequently, when hybrid approaches are proposed,it would be advisable to test the results against comparable
+fully dynamic and fully static techniques.
+5 Conclusion and future work
+In this paper, we tested malware detection techniques based
+on API call sequences and opcode sequences. We trained
+Hidden Markov Models and compared detection rates for
+models based on static data, dynamic data, and hybridapproaches.
+Our results indicate that a fully dynamic approach based
+on API calls is extremely effective across a range of mal-
+ware families. A fully static approach based on API callswas nearly as effective in most cases. Our results also show
+that opcode sequences can be effective in many cases, but for
+some families the results are not impressive. These resultslikely reﬂect the nature of obfuscation techniques employed
+by malware writers. That is, current obfuscation techniques
+are likely to have a signiﬁcant effect on opcode sequences,but little attention is paid to API calls. With some addi-tional effort, API call sequences could likely be obfuscated,
+in which case the advantage of relying on API call sequences
+for detection might diminish signiﬁcantly.
+Examples of relatively complex and involved hybrid tech-
+niques have recently appeared in the literature. However, due
+to the use of different data sets, different measures of success,and so on, it is often difﬁcult, if not impossible, to compare
+these techniques to previous (non-hybrid) work. Further, the
+very complexity of such detection techniques often makesit difﬁcult to discern the actual beneﬁt of any one particu-lar aspect of a technique. The primary goal of this research
+was to test the tradeoffs between static, dynamic, and hybridanalysis, while eliminating as many confounding variables
+as possible.
+The experimental results presented in this paper indicate
+that a straightforward hybrid approach is unlikely to be supe-rior to fully dynamic detection. And even in comparison to
+fully static detection, our hybrid dynamic/static approach did
+not offer consistent improvement. Interestingly, the imprac-tical static/dynamic hybrid approach was superior in some
+cases (by some measures). These results are, perhaps, some-
+what surprising given the claims made for hybrid approaches.
+Of course, it is certain that hybrid techniques offer signif-
+icant beneﬁts in some cases. But, the work here suggests that
+such claims should be subject to careful scrutiny. In partic-ular, it should be made clear whether improved detection isactually due to a hybrid model itself, or some other factor,
+such as the particular combination of scores used. Further-
+more, it should be determined whether these beneﬁts existover a wide range of malware samples, or whether they are
+only relevant for a relatively narrow range of malware.
+Future work could include a similar analysis invovling
+additional features beyond API calls and opcodes. A com-
+parison of scoring techniques other than HMMs (e.g., graph-
+based scores, structural scores, other machine learning andstatistical scores) and optimal combinations of static anddynamic scores (e.g., using Support V ector Machines) would
+be worthwhile. Finally, a more in-depth analysis of imbalance
+issues in this context might prove interesting.
+References
+1. Ahmed, F. et al: Using spatio-temporal information in API calls
+with machine learning algorithms for malware detection, ACMWorkshop on Security and Artiﬁcial Intelligence (2009)
+2. Anderson, B., et al.: Graph-based malware detection using dynamic
+analysis. J. Comput. Virol. 7(4), 247–258 (2011)
+3. Annachhatre, C., Austin, T.H., Stamp, M.: Hidden Markov models
+for malware classiﬁcation. J. Comput. Virol. Hack. Tech. 11(2),
+59–73 (2014)
+4. Attaluri, S., McGhee, S., Stamp, M.: Proﬁle Hidden Markov
+Models and metamorphic virus detection. J. Comput. Virol. 5(2),
+151–169 (2009)
+5. Aycock, J.: Computer Viruses and Malware. Springer-V erlag, New
+Y ork (2006)
+6. Baysa, D., Low, R.M., Stamp, M.: Structural entropy and meta-
+morphic malware. J. Comput. Virol. Hack. Tech. 9(4), 179–192
+(2013)
+7. Borello, J., Me, L.: Code obfuscation techniques for metamorphic
+viruses. J. Comput. Virol. 4(3), 211–220 (2008)
+8. Bradley, A.P .: The use of the area under the ROC curve in the eval-
+uation of machine learning algorithms. J. Pattern Recogn. 30(7),
+1145–1159 (1997)
+9. Buster Sandbox Analyser. http://bsa.isoftware.nl/ . Accessed 20
+Dec 2015
+123A. Damodaran et al.
+10. Choi, Y .H. et al.: Toward extracting malware features for classiﬁca-
+tion using static and dynamic analysis. Computing and NetworkingTechnology (ICCNT), Gueongju, South Korea, pp. 126–129
+11. Christodorescu,M., Jha, S.: Static analysis of executables to detect
+malicious patterns. In: Proceeding of USENIX Security Sym-posium. Bellevue, W A, pp. 169–186. http://www.cs.cornell.edu/
+courses/cs711/2005fa/papers/cj-usenix03.pdf
+12. Dai, J., Guha, R., Lee, J.: Efﬁcient virus detection using dynamic
+instruction sequences. J. Comput. 4(5), 405–414 (2009)
+13. Damodaran, A.: Combining dynamic and static analysis for mal-
+ware detection, Master’s report, Department of Computer Science,San Jose State University, 2015. http://scholarworks.sjsu.edu/etd_
+projects/391/
+14. Davis, J., Goadrich, M.: The relationship between precision-
+recall and ROC curves, http://www.autonlab.org/icml_documents/
+camera-ready/030_The_Relationship_Bet.pdf
+15. Deshpande, P .: Metamorphic detection using function call graph
+analysis, Master’s report, Department of Computer Science,San Jose State University, 2013, http://scholarworks.sjsu.edu/etd_
+projects/336/
+16. Deshpande, S., Park, Y ., Stamp, M.: Eigenvalue analysis for meta-
+morphic detection. J. Comput. Virol. Hack. Techn. 10(1), 53–65
+(2014)
+17. Dinaburg, A., Royal, P ., Sharif, M. and Lee, W.: Ether: Malware
+analysis via hardware virtualization extensions, CCS 08, October27–31, 2008, Alexandria, Virginia. http://ether.gtisc.gatech.edu/
+ether_ccs_2008.pdf
+18. Egele, M., Scholte, T., Kirda, E. and Kruegel, C.: A survey on
+automated dynamic malware analysis techniques and tools. J. ACMComput. Surv. 44(2):Article 6, (2012)
+19. Eskandari, M., Hashemi, S.: A graph mining approach for detecting
+unknown malwares. J. Vis. Lang. Comput. 23(3), 154–162 (2012)
+20. Eskandari, M., Khorshidpour, Z., Hashemi, S.: HDM-Analyser:
+A hybrid analysis approach based on data mining techniques formalware detection. J. Comput. Virol. Hack. Techn. 9(2), 77–93
+(2013)
+21. Eskandari, M., Khorshidpur, Z. and Hashemi, S.: To incorporate
+sequential dynamic features in malware detection engines, Intel-ligence and Security Informatics Conference (EISIC), pp. 46–52(2012)
+22. Fawcett. T.: An introduction to ROC analysis. http://people.inf.elte.
+hu/kiss/13dwhdm/roc.pdf
+23. Ghahramani, Z.: An introduction to hidden Markov models and
+Bayesian networks. Int. J. Pattern Recognit. Artif. Intell. 15(1),
+9–42 (2001)
+24. Harebot.: http://www.pandasecurity.com/homeusers/security-
+info/220319/Harebot.M
+25. Jacob, G., Debar, H., Filiol, E.: Behavioral detection of malware:
+From a survey towards an established taxonomy. J. Comput. Virol.4(3), 251–266 (2008)
+26. Jidigam, R.K., Austin, T.H., Stamp, M.: Singular value decompo-
+sition and metamorphic detection. J. Comput. Virol. Hack. Techn11(4), 203–216 (2015)
+27. Kolbitsch, C. et al.: Effective and efﬁcient malware detection at
+the end host. In: Proceedings of the 18th conference on USENIXsecurity symposium, pp. 351–366. Montreal Canada. https://www.
+usenix.org/legacy/event/sec09/tech/full_papers/kolbitsch.pdf
+28. Lee, J., Austin, T.H., Stamp, M.: Compression-based analysis of
+metamorphic malware. Int. J. Secur. Netw 10(2), 124–136 (2015)
+29. Nappa, A., Raﬁque, M.Z. and Caballero, J.: Driving in the cloud:
+An analysis of drive-by download operations and abuse reporting,Proceedings of the 10th Conference on Detection of Intrusionsand Malware & Vulnerability Assessment , Berlin, Germany, July
+(2013)30. Park, Y ., Reeves, D., Mulukutla, V . and Sundaravel, B.: Fast mal-
+ware classiﬁcation by automated behavioral graph matching. In:Proceedings of the 6th Annual Workshop on Cyber Security andInformation Intelligence Research (2010)
+31. Park, Y ., Reeves, D. and Stamp, M.: Deriving common malware
+behavior through graph clustering. Comput. Secur. 39(B):419–430
+(2013)
+32. Qiao, Y ., He, J., Yang, Y ., Ji, L.: Analyzing malware by abstracting
+the frequent itemsets in API call sequences, pp. 265–270. Trust,Security and Privacy in Computing and Communications (Trust-Com) (2013)
+33. Rhee, J., Riley, R., Xu, D., Jiang, X.: Kernel malware analysis
+with un-tampered and temporal views of dynamic kernel memory.Recent Adv. Intrusion Detect. Lect. Notes Comput. Sci. 6307 , 178–
+197 (2010)
+34. Rabiner, L.R.: A tutorial on Hidden Markov Models and selected
+applications in speech recognition. Proc IEEE 77(2):257–286
+(1989). http://www.cs.ubc.ca/~murphyk/Bayes/rabiner.pdf
+35. Runwal, N., Low, R.M., Stamp, M.: Opcode graph similarity and
+metamorphic detection. J. Comput. Virol. 8(1–2), 37–52 (2012)
+36. SandBoxie.
+http://sandboxie.com/
+37. Security Shield. http://www.symantec.com/security_response/
+glossary/deﬁne.jsp?letter=s&word=security-shield
+38. Shankarapani, M.K., Ramamoorthy, S., Movva, R.S., Mukkamala,
+S.: Malware detection using assembly and API call sequences. J.Comput. Virol. 2(7), 107–119 (2011)
+39. Shanmugam, G., Low, R.M., Stamp, M.: Simple substitution dis-
+tance and metamorphic detection. J. Comput. Virol. Hack. Techn.9(3), 159–170 (2013)
+40. Singh, T.: Support V ector Machines and metamorphic malware
+detection, Master’s report, Department of Computer Science, SanJose State University (2015). http://scholarworks.sjsu.edu/etd_
+projects/409/
+41. Smart HDD. http://support.kaspersky.com/viruses/rogue?qid=
+208286454
+42. Sorokin, I.: Comparing ﬁles using structural entropy. J. Comput.
+Virol. 7(4), 259–265 (2011)
+43. Stamp, M.: A revealing introduction to hidden Markov models
+(2012). http://www.cs.sjsu.edu/~stamp/RUA/HMM.pdf
+44. Symantec White Paper, Internet Security Report, vol 20, (2015).
+http://www.symantec.com/security_response/publications/threatreport.jsp
+45. Toderici, A.H., Stamp, M.: Chi-squared distance and metamorphic
+virus detection. J. Comput. Virol. Hack. Techn. 9(1), 1–14 (2013)
+46. Trojan.Zbot. http://www.symantec.com/security_response/write
+up.jsp?docid=2010-011016-3514-99
+47. Trojan.ZeroAccess. http://www.symantec.com/security_response
+/writeup.jsp?docid=2011-071314-0410-99
+48. Win32/Winwebsec. http://www.microsoft.com/security/portal/
+threat/encyclopedia/entry.aspx?Name=Win32%2fWinwebsec
+49. Wong, W., Stamp, M.: Hunting for metamorphic engines. J. Com-
+put. Virol. 2(3), 211–229 (2006)
+50. Ye, Y ., Wang, D., Li, T., Ye, D., Jiang, Q.: An intelligent PE-
+malware detection system based on association mining. J. Comput.Virol. 4(4), 323–334 (2008)
+123

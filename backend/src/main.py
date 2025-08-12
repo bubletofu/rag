@@ -1,67 +1,75 @@
-#backend/src/main.py
-
-from fastapi import FastAPI, UploadFile, File
+# backend/src/main.py
+from fastapi import FastAPI, UploadFile, File, Body
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from langchain_openai import OpenAI, OpenAIEmbeddings
-from langchain.chains import RetrievalQA
-from langchain_community.vectorstores import Chroma
-from src.services.rag_service import load_and_index_documents
-import os
 from dotenv import load_dotenv
-import shutil
+import os, shutil, glob
 
-
-load_dotenv() #tét git
-
-app = FastAPI()
-
-vectorstore = load_and_index_documents(use_openai=True)
-llm = OpenAI(
-    openai_api_key=os.getenv("OPENAI_API_KEY"),
-    base_url=os.getenv("OPENAI_BASE_URL")
+from .services.rag_service import (
+    load_and_index_documents,
+    rebuild_index,
+    answer_query,
 )
-retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    chain_type="stuff",
-    retriever=retriever,
-    return_source_documents=True
+
+load_dotenv()
+
+app = FastAPI(title="RAG API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", 
+                   "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+@app.get("/", include_in_schema=False)
+def home():
+    return RedirectResponse("/docs")
+
+@app.get("/health", include_in_schema=False)
+def health():
+    return {"ok": True}
+
 
 class QueryRequest(BaseModel):
     query: str
-    top_k: int = 3
+    top_k: int = 6
+    filters: dict | None = None
+    score_threshold: float | None = None
 
 @app.post("/query")
 async def query_endpoint(req: QueryRequest):
-    result = qa_chain.invoke({"query": req.query})
-    return {
-        "answer": result['result'],
-        "sources": [
-            {
-                "source": doc.metadata.get("source", "Unknown"),
-                "page_content": doc.page_content
-            }
-            for doc in result['source_documents']
-        ]
-    }
+    return await answer_query(
+        query=req.query,
+        k=req.top_k,
+        filters=req.filters,
+        score_threshold=req.score_threshold,
+    )
 
 @app.post("/load-document")
 async def load_document(file: UploadFile = File(...)):
-     
-    ext = file.filename.split(".")[-1]
-    target_dir = os.getenv("DATA_DIR") if ext == "pdf" else os.getenv("DATA_DIR").replace("pdfs", "web_pages")
-    os.makedirs(target_dir, exist_ok=True)
-    file_path = os.path.join(target_dir, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    data_dir = os.getenv("DATA_DIR", "./database/pdfs")
+    os.makedirs(data_dir, exist_ok=True)
+    dst = os.path.join(data_dir, file.filename)
+    with open(dst, "wb") as buf:
+        shutil.copyfileobj(file.file, buf)
+    n = load_and_index_documents()
+    return {"message": f"Loaded '{file.filename}'", "chunks_indexed": n}
 
-    global vectorstore, retriever, qa_chain
-    vectorstore = load_and_index_documents(use_openai=True)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
-    return {"message": f"Document {file.filename} loaded and indexed"}
+@app.post("/rebuild-index")
+async def rebuild():
+    n = rebuild_index()
+    return {"status": "ok", "chunks": n}
+
+@app.get("/sources")
+async def list_sources():
+    root = os.getenv("DATA_DIR", "./database/pdfs")
+    files = [os.path.basename(p) for p in glob.glob(os.path.join(root, "*.pdf"))]
+    return {"sources": files}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("backend.src.main:app", host="0.0.0.0", port=8000, reload=True)

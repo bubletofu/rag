@@ -10,3 +10,7 @@ PyPDF2
 pytest
 pypdf
 python-multipart
+celery[redis]>=5.3
+redis>=5.0
+langchain-chroma
+chromadb

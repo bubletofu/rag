@@ -18,28 +18,30 @@ This document outlines a complete Retrieval-Augmented Generation (RAG) pipeline 
 ```mermaid
 flowchart LR
   subgraph Ingestion
-    A["Raw Docs (PDF, HTML, Crawled)"] --> B["Text Loader (LangChain Loaders)"]
-    B --> C["Chunker (RecursiveCharacterTextSplitter)"]
+    A["Raw Docs (PDF, HTML, Crawled)"] --> B["Text Loader Task (LangChain Loaders)"]
+    B -->|enqueue| CW0["Celery Worker: Text Loader"]
+    CW0 --> C["Chunker Task (RecursiveCharacterTextSplitter)"]
+    C -->|enqueue| CW1["Celery Worker: Chunker"]
   end
 
   subgraph Embedding
-    C --> D["GoogleGenerativeAIEmbedding Task"]
-    D -->|enqueue| CW1["Celery Worker: Embedding"]
+    CW1 --> D["GoogleGenerativeAIEmbedding Task"]
+    D -->|enqueue| CW2["Celery Worker: Embedding"]
   end
 
   subgraph Storage
-    CW1 --> E["ChromaDB"]
+    CW2 --> E["ChromaDB"]
   end
 
   subgraph Backend
     E --> F["Retriever (VectorStoreRetriever)"]
-    F --> G["LLM Generation Task (RetrievalQA Chain)"]
-    G -->|enqueue| CW2["Celery Worker: LLM Generator"]
-    CW2 --> H["FastAPI `/query` Endpoint"]
+    F --> G["LLM Generation (RetrievalQA Chain)"]
+    G --> H["FastAPI `/query` Endpoint"]
   end
 
   subgraph MessageBroker
     MQ1["Redis or RabbitMQ"]
+    MQ1 --> CW0
     MQ1 --> CW1
     MQ1 --> CW2
   end

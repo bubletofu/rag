@@ -106,6 +106,12 @@ def _format_context(docs: List[Document]) -> str:
         parts.append(f"[{src} p.{page}]\n{d.page_content}")
     return "\n\n---\n\n".join(parts)
 
+# expose a simple upsert helper for Celery
+def upsert_chunks(chunks):
+    vs = get_vectorstore()  
+    vs.add_documents(chunks)
+    return len(chunks)
+
 async def answer_query(query: str, k: int = 6,
                        filters: Optional[Dict[str, Any]] = None,
                        score_threshold: Optional[float] = None) -> Dict[str, Any]:

@@ -1,22 +1,55 @@
-# ~/.gitignore
+# Environment variables
+.env
+.env.local
+.env.*.local
+frontend/.env
+
+# Python
 *.log  
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.env
-.env
 .venv/
+venv/
+env/
+*.egg-info/
+
+# Database
 *.sqlite3
-*.log
+*.db
+
+# Build artifacts
 *.bin
-
-# VSCode
-.vscode/
-
-# MacOS
-.DS_Store
-
-# Docker
 *.pid
 .index_storage/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Docker
+.dockerignore
+
+# Sensitive files
+*.key
+*.pem
+credentials.json
+secrets.json
